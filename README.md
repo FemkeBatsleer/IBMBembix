@@ -14,12 +14,8 @@ source code and data for manuscript
 - directory 'analyse runs': two scripts to extract the parameters and calculate summary statistics: spatial pattern statistics and network analyses from the runs of the IBM; H_* scripts are helper scripts used in the two main scripts
 
 ## ABC
-- directory 'analyse field data': script (.Rmd) to calculate summary statistics: spatial pattern statistics and network analyses. Input are 'Distances field.txt' and 'Output field.txt'. The map 'Outputs' gives the outputs for these of the IBM runs made on the HPC@UGent. These are used in the actual ABC analysis.
-
-
-Summary_stats_field.txt --> output
-
-
+- directory 'analyse field data': script (.Rmd) to calculate summary statistics: spatial pattern statistics and network analyses. Input are 'Distances field.txt' and 'Output field.txt'. The map 'Outputs' gives the output of the field data and outputs for these of the IBM runs made on the HPC@UGent. These are used in the actual ABC analysis.
+- directory 'ABC analysis' contains the actual ABC analysis.
 
 
 
