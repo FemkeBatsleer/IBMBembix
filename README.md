@@ -7,4 +7,13 @@ source code and data for manuscript
 - MicrohabitatmodelComplete.xlsx: datafile needed
 - RegPoints.txt
 
+## IBM
+- Bembix_model_simple.py --> actual IBM, used by all Bembix_*_s.py
+- Bembix_*_s.py: loops for all scenarios to make several runs for a scenario (input: begin number, end number e.g. 0 1000: makes 1000 runs)
+- Hist_distances.txt, grey_plot50.jpg --> input for Bembix_model_simple.py
+
+
+
+
+
 Note: a selection of 'real nests' are made within the scripts, these are nests that have multiple visits on several days, where prey were brought to, or where prolonged digging was seen. This species is known for doing test diggings, and we wanted to exclude these from the analyses.
