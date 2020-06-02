@@ -11,10 +11,10 @@ source code and data for manuscript
 - Bembix_model_simple.py --> actual IBM, used by all Bembix_*_s.py
 - Bembix_*_s.py: loops for all scenarios to make several runs for a scenario (input: begin number, end number e.g. 0 1000: makes 1000 runs)
 - Hist_distances.txt, grey_plot50.jpg --> input for Bembix_model_simple.py
-- directory 'analyse runs': two scripts to extract the parameters and calculate summary statistics: spatial pattern statistics and network analyses from the runs of the IBM; H_* scripts are helper scripts used in the two main scripts
+- directory 'analyse runs': two scripts to extract the parameters and calculate summary statistics: spatial pattern statistics and network analyses from the runs of the IBM; H_* scripts are helper scripts used in the two main scripts. The map 'Outputs' gives the outputs for these of the IBM runs made on the HPC@UGent. These are used in the actual ABC analysis.
 
 ## ABC
-- directory 'analyse field data': script (.Rmd) to calculate summary statistics: spatial pattern statistics and network analyses. Input are 'Distances field.txt' and 'Output field.txt'. The map 'Outputs' gives the output of the field data and outputs for these of the IBM runs made on the HPC@UGent. These are used in the actual ABC analysis.
+- directory 'analyse field data': script (.Rmd) to calculate summary statistics: spatial pattern statistics and network analyses. Input are 'Distances field.txt' and 'Output field.txt'. 'Summary_stats_field.txt' is the output of the analysis.
 - directory 'ABC analysis' contains the actual ABC analysis.
 
 
