@@ -1,0 +1,7 @@
+The summary statistics of the field data was calculated in this directory
+
+Make_Summary_stats_field.Rmd --> R markdown script to calculate summary stats
+Distances field.txt --> input
+Output field.txt --> input
+
+Summary_stats_field.txt --> output
