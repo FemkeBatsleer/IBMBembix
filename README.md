@@ -12,7 +12,7 @@ Raw GIS data (rasters: raw data - CIR (band 1 NIR, band 3 R) DEM and derived - N
 ## IBM
 - Bembix_model_simple.py: actual IBM, used by all Bembix_*_s.py
 - Bembix_*_s.py: loops for all scenarios to make several runs for a scenario (input: begin number, end number e.g. 0 1000: makes 1000 runs)
-- Hist_distances.txt, grey_plot50.jpg: input for Bembix_model_simple.py
+- Hist_distances.txt, suitabilityINLAv2.jpg: input for Bembix_model_simple.py
 - directory 'analyse runs': two scripts to extract the parameters and calculate summary statistics: spatial pattern statistics and network analyses from the runs of the IBM; H_* scripts are helper scripts used in the two main scripts. The map 'Outputs' gives the outputs for these of the IBM runs made on the HPC@UGent. These are used in the actual ABC analysis.
 
 ## ABC
