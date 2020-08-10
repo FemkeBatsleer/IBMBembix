@@ -15,6 +15,8 @@ Raw GIS data (rasters: raw data - CIR (band 1 NIR, band 3 R) DEM and derived - N
 - Hist_distances.txt, suitabilityINLAv2.jpg: input for Bembix_model_simple.py
 - directory 'analyse runs': two scripts to extract the parameters and calculate summary statistics: spatial pattern statistics and network analyses from the runs of the IBM; H_* scripts are helper scripts used in the two main scripts. The map 'Outputs' gives the outputs for these of the IBM runs made on the HPC@UGent. These are used in the actual ABC analysis.
 
+Note: some names of scenarios were changed while writing the manuscript and so are not consistent between the scripts and manuscript: 'bimodal' became 'individual flexibility IF', 'CF' became 'Producers Scroungers PS', 'PEBU' became 'Local site fidelity LSF'.
+
 ## ABC
 - directory 'analyse field data': script (.Rmd) to calculate summary statistics: spatial pattern statistics and network analyses. Input are 'Distances field.txt' and 'Output field.txt'. 'Summary_stats_field.txt' is the output of the analysis.
 - directory 'ABC analysis' contains the actual ABC analysis. It uses output files from 'IBM/analyse runs/Outputs' and 'ABC/analyse field data'
