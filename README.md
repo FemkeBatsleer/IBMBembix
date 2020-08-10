@@ -2,10 +2,10 @@
 source code and data for manuscript
 
 ## Microhabitat model
-- 'Microhabitat Final Model with iterations.R': source code for the microhabitat model with INLA, including 10 iterations for cross-validation.
-- 'Microhabitat Final Model visualisations of iterations.R': source code for making graphs of the microhabitat model. Datafiles needed in this script are made by 'Microhabitat Final Model with iterations.R' or given.
-- MicrohabitatModel_FullData_04062020.xlsx: datafile needed
-- RegPoints_04062020.txt
+- 'Microhabitat Final Model with iterations - scales.R': source code for the microhabitat model with INLA, including 10 iterations for cross-validation, and choice of scale.
+- 'Microhabitat Final Model visualisations of iterations.R': source code for making graphs of the microhabitat model. Datafiles needed in this script are made by 'Microhabitat Final Model with iterations.R'.
+- MicrohabitatModel_FullData_04062020.xlsx: raw datafile to start microhabitat model.
+- RegPoints_04062020.txt: raw datafile of the regular points to make predictions of the model, the habitat suitability map.
 
 Raw GIS data (rasters: raw data - CIR (band 1 NIR, band 3 R) DEM and derived - NDVI, insolation, slope) can be found on https://drive.google.com/drive/folders/12TNHrsqpTIvBvV4oNfkj-UeUmv68ufLx?usp=sharing
 
