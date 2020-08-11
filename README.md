@@ -19,7 +19,7 @@ Note: some names of scenarios were changed while writing the manuscript and so a
 
 ## ABC
 - directory 'analyse field data': script (.Rmd) to calculate summary statistics: spatial pattern statistics and network analyses. Input are 'Distances field.txt' and 'Output field.txt'. 'Summary_stats_field.txt' is the output of the analysis.
-- directory 'ABC analysis' contains the actual ABC analysis. It uses output files from 'IBM/analyse runs/Outputs' and 'ABC/analyse field data'
+- directory 'ABC analysis' contains the actual ABC analysis. It uses output files from 'IBM/analyse runs/Outputs' and 'ABC/analyse field data'. 'ABC_Bembix_Final.Rmd' is the overall ABC analysis, 'Detailed_model_selection.Rmd' is the code to reproduce table 2 from the manuscript.
 
 
 
