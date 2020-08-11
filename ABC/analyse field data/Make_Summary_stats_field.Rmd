@@ -1,0 +1,230 @@
+---
+title: "Point Pattern Analysis"
+date: "7 March 2017"
+output:
+  html_document: default
+geometry: margin=1.5in
+header-includes:
+  \pagenumbering{gobble}
+---
+#Point Pattern Analysis - Visualizing the data
+##Material & methods
+Point pattern data can spatially be visualised and analysed with the R package Spatstat. The data are transformed into a ppp-class (planar point pattern) to easily plot the data and make calculations. The point pattern is plotted in a window frame, defined as a polygon. The polygon for the nests approximate the fenced grid in the field. Associated information of the points can be included in the ppp-object as 'marks'. Relevant marks in the ppp-object of the nests are 'RealNest', 'Parasitised', 'Day'. These data are plotted and also density-plots are made.
+
+##Code & Results
+The data are imported and a polygon defined.  
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+#load Spatstat
+library(spatial)
+library(spatstat)
+library(ggplot2)
+library(igraph)
+
+#read the data as text-file, to a data.frame
+setwd("D:/fbatslee/OneDrive - UGent/Modelling Thesis/Field Summary stats")
+data <- read.table("Output field.txt", header=T)
+#summary of the data
+#data
+
+summary_stats_field <- tibble(scenario=c("field data", "distances"))
+```
+
+
+```{r, echo=TRUE, fig.height=4, fig.width=6, message=FALSE, warning=FALSE}
+#vectorising the data
+X<-data$x
+Y<-data$y
+RealNest<-data$EchtNest
+Par <- data$Par
+DayCount <- data$DayCount
+Pred <- cut(data$pred, breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1),
+            labels = c('<0.1', '<0.2', '<0.3', '<0.4', '<0.5', '<0.6', '<0.7', '<0.8', '<0.9', '<1'))
+
+#polygon 
+x_pol = c(23261.537, 23231.81, 23250.135, 23332.346, 23321.325)
+y_pol = c(197904.02, 197878.639, 197845.014, 197876.824, 197899.974)
+polygon = ppp(x_pol, y_pol, c(23231, 23333), c(197844, 197905))
+raster_or <- owin(poly=list(x=x_pol, y=y_pol))
+# plot(raster_or, col = "red",
+#      main="Polygon of the grid (original red, adjusted black line)")
+
+#To ensure all the points are within the polygon, the original 
+#grid-boundaries
+#are shifted a bit some of the nests lie about half a meter outside 
+#the original grid
+x_shifted = c(23261.537, 23230, 23250.135, 23332.346, 23321.325, 23313,
+              23310)
+y_shifted = c(197904.02, 197878.639, 197845.014, 197876.824, 197899.974,
+              197907, 197901)
+
+#plot the polygon
+raster <- owin(poly=list(x=x_shifted, y=y_shifted))
+# plot(raster, add=TRUE)
+```
+
+A planar point pattern (ppp-class) is made, with marks RealNest, Day and Par. A separate ppp-object is made for real nests alone. The average density of all nests in the polygon is 0.27nests/m² and of real nests only 0.15nests/m². The amount of real nests is 550 and test nests is 459 (total 1009). 147 nests are parasited (of the 1009 nests or 550 real nests). The total amount of days that nests were tagged is 30, but days are numbered from 1 to 49 (period between 28/06/2016 and 15/08/2016). 1009 points are used instead of the full 1017, because 8 fell out of the DEM (thus no predictions possible for microhabitatmodel).  
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+#m = factor(RealNest) #if you want to add 'marks' to ppp
+m = data.frame(RealNest=factor(RealNest), Day=factor(DayCount),
+               Par=factor(Par), Pred=as.factor(Pred))
+#making the planar point pattern class
+Nests <- ppp(X, Y, c(23231, 23333), c(197844, 197905), marks=m,
+             window=raster)
+#ppp-object of only the real nests
+Nests_real <- Nests[RealNest==1]
+#summary(Nests_real)
+
+unitname(Nests) <- c("metre", 'metres')
+unitname(Nests_real) <- c("metre", 'metres')
+
+#density
+lambda<-summary(Nests)$intensity
+# lambda
+lambda_real <- summary(Nests_real)$intensity
+# lambda_real
+```
+
+Density plots give good visualisations of the spatial structuring of the nests.  
+
+```{r, fig.height=8, fig.width=12, message=FALSE, warning=FALSE}
+par(mfrow=c(2,2))
+
+DensityVisualisation_real <- density(Nests_real, sigma = 2)
+# plot(DensityVisualisation_real, main = " ", cex=10)
+# plot(Nests_real, add = TRUE, use.marks = FALSE, cex = 0.2)
+# contour(density(Nests_real,3),add=TRUE, axes=FALSE)
+# persp(DensityVisualisation_real, visible=TRUE, shade = 0.3, expand=10,
+#       main="", zlab="Density real nests", cex=10)
+
+summary_stats_field$mean_dens <- c(mean(DensityVisualisation_real), NA)
+summary_stats_field$sd_dens <- c(sd(DensityVisualisation_real), NA)
+```
+
+#Point Pattern Analysis - Spatial statistics
+
+##Code & Results
+###Distance functions
+The functions calculated from these distances are plotted. Envelopes can be calculated (based on Monte Carlo simulations) to formally infer statistical deviation from a completely random pattern. The four different functions indicate a clearly **clustered pattern**. The pair correlation graph shows that there is clustering up to **3-5m**.
+
+```{r, fig.height=4, fig.width=12, echo=TRUE, message=FALSE, warning=FALSE}
+RipleyK30 <- as.data.frame(Kest(Nests_real, r=c(0,2,5,10,15,20,30,40)))
+summary_stats_field$'0' <- c(RipleyK30$iso[1], 0)
+summary_stats_field$'2' <- c(RipleyK30$iso[2], 2)
+summary_stats_field$'5' <- c(RipleyK30$iso[3], 5)
+summary_stats_field$'10' <- c(RipleyK30$iso[4], 10)
+summary_stats_field$'15' <- c(RipleyK30$iso[5], 15)
+summary_stats_field$'20' <- c(RipleyK30$iso[6], 20)
+summary_stats_field$'30' <- c(RipleyK30$iso[7], 30)
+summary_stats_field$'40' <- c(RipleyK30$iso[8], 40)
+```
+
+###Mark equality
+For the marks associated with the point pattern, a **mark equality function** can be calculated. These are interpreted similarly as the pair correlation function: it shows the probability that two points at a distance r have the same mark-value.
+```{r, fig.height=12, fig.width=12, echo=TRUE, message=FALSE, warning=FALSE}
+MarkReal_day <- subset(Nests_real, select=Day)
+
+MC_df = as.data.frame(markcorr(MarkReal_day, r=c(0,2,4,6,8,10,12,14,16,18,20)))
+
+summary_stats_field$mean_mark <- c(mean(MC_df$iso), NA)
+summary_stats_field$sd_mark <- c(sd(MC_df$iso), NA)
+summary_stats_field$'0_m' <- c(MC_df$iso[1], 0)
+summary_stats_field$'2_m' <- c(MC_df$iso[2], 2)
+summary_stats_field$'4_m' <- c(MC_df$iso[3], 4)
+summary_stats_field$'6_m' <- c(MC_df$iso[4], 6)
+summary_stats_field$'8_m' <- c(MC_df$iso[5], 8)
+summary_stats_field$'10_m' <- c(MC_df$iso[6], 10)
+summary_stats_field$'12_m' <- c(MC_df$iso[7], 12)
+summary_stats_field$'14_m' <- c(MC_df$iso[8],14)
+summary_stats_field$'16_m' <- c(MC_df$iso[8], 16)
+summary_stats_field$'18_m' <- c(MC_df$iso[8], 18)
+summary_stats_field$'20_m' <- c(MC_df$iso[8],20)
+```
+
+#Network Analysis
+
+```{r}
+points <- MarkReal_day
+unitname(points) <- c('metres', 'metres')
+#plot(points, use.marks=F)
+data_real = data[data$EchtNest==1,] 
+kc = kmeans(cbind(data_real$x,data_real$y), number_of_clusters, nstart=20)
+#add assigned cluster to the data
+data_real$cluster = factor(kc$cluster)
+# cl_ppp = ppp(X,Y, c(23231, 23333), c(197844, 197905), marks=data.frame(Cluster = data$cluster, RealNest = data$EchtNest),window=raster)
+# cl_ppp_real <- subset(cl_ppp[RealNest==TRUE], select=Cluster)
+#plot(cl_ppp, cex=0.5, chars=rep(1, number_of_clusters),cols=colfunc2(number_of_clusters), legend=F)
+#network analysis, read distance file with samen index as the current outputfile
+#format waspID, nest1, nest2, distance
+data_net <- read.table("D:/fbatslee/OneDrive - UGent/Modelling Thesis/Field Summary stats/Distances field.txt", header=T)
+    
+#couple these
+cl_cl <- tibble(from=integer(0), to=integer(0))
+for (i in c(1:nrow(data_net))){
+  #get nest from and to
+  from_nest = as.character(data_net[i,]$Nest1)
+  to_nest = as.character(data_net[i,]$Nest2)
+  #seek corresponding cluster
+  #print(from_nest %in% as.character(data_cl$nestID))
+  from_cluster = as.integer(data_real[as.character(data_real$NestID)==as.character(from_nest),]$cluster)
+  to_cluster = data_real[as.character(data_real$NestID)==as.character(to_nest),]$cluster
+  #add them to thedata_frame of cluster to cluster
+  cl_cl = rbind(cl_cl, tibble(from=as.integer(from_cluster), to=as.integer(to_cluster)))
+    }
+    #give the links a weight (to combine multiple links later)
+cl_cl <- cbind(cl_cl, weight = rep(1,nrow(cl_cl)))
+cl_cl    
+#make networks
+net_d <- graph_from_data_frame(d=cl_cl, directed=T)
+net_ud <- graph_from_data_frame(d=cl_cl, directed=F)
+    
+#amount loops, interal + external
+all_loops = gsize(net_ud)
+all_loops_d = gsize(net_d)
+
+#simplify by removing internal loops
+net_ud <- simplify(net_ud, remove.loops=T, remove.multiple = F)
+net_d <- simplify(net_d, remove.loops=T, remove.multiple = F)
+##########################
+#amount of internal loops:
+###########################
+int_l <- 1 - gsize(net_ud)/all_loops
+
+#simplify by removing multiple loops (sum them in weight)
+net_ud_sum <- simplify(net_ud, remove.loops=T, remove.multiple= T)
+net_d_sum <- simplify(net_d, remove.loops=T, remove.multiple= T)
+  
+###################
+#density/connectance
+####################
+#self-loops not considered
+dens = edge_density(net_ud_sum, loops=F)
+#directed considered
+dens_d = edge_density(net_d_sum, loops=F)
+    
+##############
+#Reciprocity
+#############
+rp <- reciprocity(net_d_sum)
+reciproc <- add_row(reciproc, scenario=as.factor(scenario_run), reciprocity=rp)
+    
+##############
+#Transitivity
+################
+trans_ud = transitivity(net_ud_sum, type="global")
+trans_d = transitivity(net_d_sum, type="global")
+    
+summary_stats_field$internal_loops <- c(int_l, NA)
+summary_stats_field$all_loops  <- c(all_loops, NA)
+summary_stats_field$dens_undirected  <- c(dens, NA)
+summary_stats_field$dens_directed <- c(dens_d, NA)
+summary_stats_field$reciprocity <- c(rp, NA)
+summary_stats_field$transitivity_und <- c(trans_ud, NA)
+summary_stats_field$transitivity_dir <- c(trans_d, NA)
+
+summary_stats_field
+
+write.table(summary_stats_field, "Summary_stats_field.txt", sep="\t")
+```
+
