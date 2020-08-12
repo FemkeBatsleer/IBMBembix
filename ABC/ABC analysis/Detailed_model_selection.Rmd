@@ -1,0 +1,325 @@
+---
+title: "ABC_detailed_model_selection"
+author: "Femke Batsleer"
+date: "17 december 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#ABC analysis
+two methods are used, with abc package and with flexible script from Sibly's group. Only real difference applicable here is that during model selection different scaling is used (abc package: mad, median absolute deviation; script: sd)
+```{r, message=FALSE, warning=FALSE}
+setwd("D:/fbatslee/OneDrive - UGent/WP 2 Modelling Thesis/2 - Analysis/ABC4IBM/ABC")
+
+library(abc)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(scales)
+library(gridExtra)
+
+#loading the data: summary stats, params scenarios, field data summary stats
+##summary stats
+getwd()
+ss_random <- read.table("../Data outputs/Simple 12-06-2020 INLA/Summary_stats_random_2020-08-11.txt", header=T)
+ss_bimodal <- read.table("../Data outputs/Simple 12-06-2020 INLA/Summary_stats_bimodal_2020-08-11.txt", header=T)
+ss_BU <- read.table("../Data outputs/Simple 12-06-2020 INLA/Summary_stats_bottom-up_2020-08-11.txt", header=T)
+ss_CF <- read.table("../Data outputs/Simple 12-06-2020 INLA/Summary_stats_CF_2020-08-11.txt", header=T)
+ss_CA <- read.table("../Data outputs/Simple 12-06-2020 INLA/Summary_stats_conspec-attraction_2020-08-11.txt", header=T)
+ss_PEBU <- read.table("../Data outputs/Simple 12-06-2020 INLA/Summary_stats_prev-exp-BU_2020-08-11.txt", header=T)
+
+##combine the datasets
+ss_all <- plyr::rbind.fill(ss_random, ss_bimodal, ss_CA, ss_CF, ss_BU, ss_PEBU)
+
+colnames(ss_all) <- c("scenario", "file title", 'RK2', 'RK5', 'RK10', 'RK15', 'RK20', 'RK30', 'RK40',
+                      "NA_internal_loops", "NA_all_loops","NA_dens_undirected", "NA_dens_directed",
+                      "NA_reciproc","NA_transitivity_und","NA_transitivity_dir")
+
+str(ss_all)
+```
+
+
+###Field data
+Master thesis data  
+```{r}
+##field data summary stats
+ss_field_df <- read.table("../Field Summary stats/Summary_stats_field.txt", header=T)
+ss_field_df$X0 <- NULL
+ss_field_df$scenario <- NULL
+ss_field_df[] <- lapply(ss_field_df[], as.numeric)
+colnames(ss_field_df) <- c("mean_RK", "sd_RK", 'RK2', 'RK5', 'RK10', 'RK15', 'RK20', 'RK30', 'RK40',
+                           "NA_internal_loops", "NA_all_loops","NA_dens_undirected", "NA_dens_directed",
+                           "NA_reciproc","NA_transitivity_und","NA_transitivity_dir")
+
+ss_field_df$mean_RK <- NULL
+ss_field_df$sd_RK <- NULL
+#make a 1D vector of it
+ss_field <- as.numeric(ss_field_df[1,])
+
+# #same for the restricted summary stats [c(1, 4:10, 13:23, 24:ncol(ss_all))]
+# ss_field_res_df <- ss_field_df[c(1:3, 5:12, 19:20, 22:23, 25)]
+# ss_field_res <- as.numeric(ss_field_res_df[1,])
+# ss_field_res_df
+```
+
+###Parameters
+Model parameters for all the runs.  
+```{r, message=FALSE, warning=FALSE}
+##priors/parameters of the models
+#2 --> with weight day and max dens
+params_random <- read.table("../Data outputs/Simple 12-06-2020 INLA/Params_random_2020-06-11.txt", header=T)
+params_bimodal <- read.table("../Data outputs/Simple 12-06-2020 INLA/Params_bimodal_2020-06-11.txt", header=T)
+params_BU <- read.table("../Data outputs/Simple 12-06-2020 INLA/Params_bottom-up_2020-06-11.txt", header=T)
+params_CF <- read.table("../Data outputs/Simple 12-06-2020 INLA/Params_CF_2020-06-11.txt", header=T)
+params_CA <- read.table("../Data outputs/Simple 12-06-2020 INLA/Params_conspec-attraction_2020-06-11.txt", header=T)
+params_PEBU <- read.table("../Data outputs/Simple 12-06-2020 INLA/Params_prev-exp-BU_2020-06-11.txt", header=T)
+
+##these dataframes are converted to numeric ones (True-->1, False-->0,...)
+change_df_num <- function(df){
+  scenario <- df$scenario
+  df$scenario <- NULL
+  df[] <- lapply(df[], as.character)
+  df[df=='True'] <- '1'
+  df[df=='False'] <- '0'
+  df[df=='response_par'] <- '1'
+  df[df=='response_type2'] <- '2'
+  df[] <- lapply(df[], as.numeric)
+  df$scenario <- scenario
+  return(df)
+}
+
+params_bimodal <- change_df_num(params_bimodal)
+params_BU <- change_df_num(params_BU)
+params_CF <- change_df_num(params_CF)
+params_CA <- change_df_num(params_CA)
+params_PEBU <- change_df_num(params_PEBU)
+
+##combine them in 1 dataset
+params_all <- plyr::rbind.fill(params_random,params_bimodal, params_CA, params_CF, params_BU, params_PEBU)
+head(params_all)
+```
+
+###Indexes
+A vector has to be created with the names in of the models corresponding to the different runs.  
+
+```{r}
+#indexes -> which row corresponds with which model
+indexes <- as.vector(unlist(ss_all[,1]))
+str(indexes)
+
+#keep summary stats with scenario attached to df
+ss_all_w_scen <- ss_all
+# ss_res_w_scen <- ss_res
+#make sure the summary stats are numeric values (scenario will be replaced with 1..6)
+ss_all[] <- lapply(ss_all[], as.numeric) #make sure all are numeric values
+# ss_res[] <- lapply(ss_res[], as.numeric)
+
+ss_all$scenario <- NULL #take scenario out of summary stats, to make calculations easier
+ss_all$`file title` <- NULL
+# ss_res$scenario <- NULL
+```
+
+
+####Selection of summary stats
+
+```{r}
+#make selection
+ss_all_sel <- ss_all %>% select("RK2","RK5", "RK10", "RK20", "RK30", "RK40",
+                                 "NA_internal_loops", "NA_all_loops", "NA_dens_directed",
+                                 "NA_reciproc", "NA_transitivity_dir")
+
+ss_field_sel_df <- ss_field_df %>% select("RK2","RK5", "RK10", "RK20", "RK30", "RK40",
+                                 "NA_internal_loops", "NA_all_loops", "NA_dens_directed",
+                                 "NA_reciproc", "NA_transitivity_dir")
+
+#standardize data according to priors ss_all
+ss_all_nost <- ss_all_sel
+ss_field_nost <- ss_field_sel_df
+
+# for (col in 1:ncol(ss_all_sel)){
+#   ss_all_sel[,col] <- (ss_all_sel[,col]-mean(ss_all_nost[,col]))/sd(ss_all_nost[,col])
+#   ss_field_sel_df[,col] <- (ss_field_sel_df[,col]-mean(ss_all_nost[,col]))/sd(ss_all_nost[,col])
+# }
+
+#make field data vector
+ss_field_sel <- as.numeric(ss_field_sel_df[1,])
+ss_all_sel_scen <- ss_all_nost
+ss_all_sel_scen$scenario <- ss_all_w_scen$scenario
+```
+
+# Model selection and Bayes factors for 2 seperate groups of summary stats
+Ripley's K: most support for bimodal; CA, CF, bimodal all three selected  
+Bimodal and CA both substantially better than CF; random, bimodal, CA, CF selected.
+Network analysis: decisive (only) support for bimodal!
+
+```{r}
+# #script from Richard Sibly's group (Elske van der Vaart)
+# source("D:/fbatslee/OneDrive - UGent/Conferences/BES/ABCWorkshop/Code/R/ModelSelection.R")
+
+params_all$rownumber <- rownames(params_all)
+#model selection only on Ripley's K
+# RK.abc <- create.abcSel(target = ss_field_sel[1:6], indexes=indexes, results=ss_all_sel[,1:6], rate=0.016666)
+# summary(RK.abc)
+RK.abc <- postpr(target = ss_field_sel[1:6], index=indexes, sumstat=ss_all_sel[,1:6], tol=0.016666, method="rejection")
+summary(RK.abc)
+# RK.m <- postpr(target = ss_field_sel[1:6], index=indexes, sumstat=ss_all_sel[,1:6], tol=0.00166, method="rejection")
+# summary(RK.m)
+indexRK_ss <- as.numeric(rownames(RK.abc$ss))
+params_all$accepted_RK <- ifelse(params_all$rownumber %in% indexRK_ss, TRUE, FALSE)
+
+
+#model selection on on network analysis
+# NA.abc <- create.abcSel(target = ss_field_sel[12:16], indexes=indexes, results=ss_all_sel[,12:16], rate=0.016666)
+# summary(NA.abc)
+NA.abc <- postpr(target = ss_field_sel[7:11], index=indexes, sumstat=ss_all_sel[,7:11], tol=0.016666, method="rejection")
+summary(NA.abc)
+
+indexNA_ss <- as.numeric(rownames(NA.abc$ss))
+params_all$accepted_NA <- ifelse(params_all$rownumber %in% indexNA_ss, TRUE, FALSE)
+```
+
+
+# Model selection for all summary stats together
+1000 best models (of 60.000, which is 1.6%) chosen.
+76.9% included environment (when CA, CF, bimodal).
+35 times prev_exp BU was chosen, without CA. CA and prev-exp_Bu have Bayes factor around 1, so equally good.
+As more runs got accepted that only include some kind of CA (225), than only with environment (35), the conspecific attraction seems to be the stronger mechanism. But both needed to eventually come to the 'best' pattern (100 best are all bimodal).
+```{r}
+# bembix.abc <- create.abcSel(target = ss_field_sel, indexes = indexes, results = ss_all_sel, rate = 0.01666)
+# summary(bembix.abc)
+
+bembix.abc <- postpr(target = ss_field_sel, index=indexes, sumstat=ss_all_sel, tol=0.016666, method="rejection")
+summary(bembix.abc)
+
+#indexes accepted
+index_ss <- as.numeric(rownames(bembix.abc$ss))
+params_all$accepted <- ifelse(params_all$rownumber %in% index_ss, TRUE, FALSE)
+
+#select, selected parameters
+#params_all$accepted <- bembix.abc$accepted
+params_accepted <- params_all %>% filter(accepted==TRUE) %>%
+  mutate_at(c("bi_CA", "active", "CA_w_env", "CA_day", "response_func"), as.numeric) %>%
+  plyr::count(c("bi_CA"))
+params_accepted
+
+params_table <- params_all %>%
+  group_by(scenario, CA_w_env, accepted) %>%
+  summarise(count=n()) %>%
+  spread(key=accepted, value=count) %>%
+  mutate(accepted_perc = `TRUE`/10) %>%
+  select(scenario, CA_w_env,accepted_perc)
+params_table
+
+params_table_RK <- params_all %>%
+  group_by(scenario, CA_w_env, accepted_RK) %>%
+  summarise(count=n()) %>%
+  spread(key=accepted_RK, value=count) %>%
+  mutate(accepted_RK_perc = `TRUE`/10) %>%
+  select(scenario, CA_w_env, accepted_RK_perc)
+params_table_RK
+
+params_table_NA <- params_all %>%
+  group_by(scenario, CA_w_env, accepted_NA) %>%
+  summarise(count=n()) %>%
+  spread(key=accepted_NA, value=count) %>%
+  mutate(accepted_NA_perc = `TRUE`/10) %>%
+  select(scenario, CA_w_env, accepted_NA_perc)
+params_table_NA
+
+#put them all in one table
+table_perc <- params_table %>%
+  left_join(params_table_RK, by=c("scenario", "CA_w_env")) %>%
+  left_join(params_table_NA, by=c("scenario", "CA_w_env"))
+table_perc
+
+# params_accepted_pack <- params_all[indexes_accepted_pack,]%>%
+#   mutate_at(c("bi_CA", "active", "CA_w_env", "CA_day", "response_func"), as.numeric) %>%
+#   plyr::count(c("CA_w_env"))
+# params_accepted_pack
+```
+
+#Get combination of other parameters
+```{r}
+table_active <- params_all %>%
+  filter(accepted==TRUE) %>%
+  group_by(scenario, CA_w_env, active) %>%
+  summarise(count=n()) %>%
+  spread(key=active, value=count)%>%
+  mutate(active_perc = `1`/(`0`+`1`)) %>%
+  select(scenario, CA_w_env, active_perc)
+table_active
+
+table_day <- params_all %>%
+  filter(accepted==TRUE) %>%
+  group_by(scenario, CA_w_env, CA_day) %>%
+  summarise(count=n()) %>%
+  spread(key=CA_day, value=count)%>%
+  mutate(day_perc = `1`/(`0`+`1`)) %>%
+  select(scenario, CA_w_env, day_perc)
+table_day
+
+table_nearCA <- params_all %>%
+  filter(accepted==TRUE) %>%
+  group_by(scenario, CA_w_env, bi_CA) %>%
+  summarise(count=n()) %>%
+  spread(key=bi_CA, value=count)%>%
+  mutate(nearCA_perc = `1`/(`0`+`1`))%>%
+  select(scenario, CA_w_env, nearCA_perc)
+table_nearCA
+
+table_params_perc <- table_active %>%
+  left_join(table_day, by=c("scenario", "CA_w_env")) %>%
+  left_join(table_nearCA, by=c("scenario", "CA_w_env"))
+table_params_perc
+
+#amount of runs of each scenario
+table_params_runs <- params_all %>%
+  group_by(scenario, CA_w_env) %>%
+  summarise(count=n())
+table_params_runs
+
+# table_active <- params_all %>%
+#   filter(accepted==TRUE) %>%
+#   group_by(scenario, CA_w_env, active, CA_day) %>%
+#   summarise(count=n()) %>%
+#   spread(key=active, value=count)%>%
+#   mutate(active_perc = `1`/(`0`+`1`)) %>%
+#   select(scenario, CA_w_env, active_perc)
+# View(table_active)
+```
+
+
+#only compare bimodal with env (both), bimodal without env (CA), PEBU (env)
+About equal amount of runs taken for 3 scenario's (5000). If different ones taken for PEBU, gives slightly different outcome. But qualitatively always the same: PEBU much worse than bimodal without env, full bimodal always way best. So overall: internal mechanisms more important for pattern than bottom-up template
+
+
+```{r}
+#make new columns to be able to select scenarios in params bimodal and PEBU
+params_contrast <- params_all %>% mutate(env_log = as.logical(CA_w_env)) %>%
+  mutate(contrast_scen = as.logical(scenario=='bimodal' | scenario=='prev-exp-BU')) %>%
+  mutate(new_scen = paste(scenario, CA_w_env, sep="_"))
+#select scenarios in ss_all_sel
+ss_contrast_sel <- ss_all_sel[params_contrast$contrast_scen,] %>% slice(1:10000,12000:17000)
+indexes_contrast <- as.vector(unlist(params_contrast[params_contrast$contrast_scen,][c(1:10000,12000:17000),"new_scen"]))
+
+model_contrast <- postpr(target=ss_field_sel, index=indexes_contrast, sumstat=ss_contrast_sel ,tol=0.00667, method="rejection")
+summary(model_contrast)
+
+table(indexes_contrast)
+
+#only RK
+model_contrast_RK <- postpr(target=ss_field_sel[1:6], index=indexes_contrast, sumstat=ss_contrast_sel[1:6] ,tol=0.00667, method="rejection")
+summary(model_contrast_RK)
+
+
+#only NA -> here bimodal without env seems better, internal dynamics most important
+model_contrast_NA <- postpr(target=ss_field_sel[7:11], index=indexes_contrast, sumstat=ss_contrast_sel[7:11] ,tol=0.00667, method="rejection")
+summary(model_contrast_NA)
+
+cv_contrast <- abc::cv4postpr(index=indexes_contrast, sumstat=ss_contrast_sel, nval=50, tols=0.0166, method='rejection')
+summary(cv_contrast)
+plot(cv_contrast, names.arg=c("bimodal_0", "bimodal_1", "PEBU"), probs=TRUE)
+```
